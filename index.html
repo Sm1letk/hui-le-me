@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>悔了么</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0a;
+      color: #fff;
+      font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+      min-height: 100vh;
+      padding: 32px 16px 64px;
+    }
+
+    main { max-width: 480px; margin: 0 auto; }
+
+    /* ── Header ── */
+    header { text-align: center; margin-bottom: 32px; }
+    header h1 { font-size: 38px; font-weight: 900; letter-spacing: 3px; }
+    header p  { color: #555; font-size: 13px; margin-top: 8px; letter-spacing: 1px; }
+
+    /* ── Cards ── */
+    .card {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    /* ── Fields ── */
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      color: #666;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #fff;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .field input[type="number"]::-webkit-inner-spin-button,
+    .field input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .field input::placeholder { color: #444; }
+    .field input:focus { border-color: #444; }
+    .field input:focus-visible { box-shadow: 0 0 0 2px rgba(255,255,255,0.25); }
+    .field input.error { border-color: #ff4444; }
+    .field input.error:focus { border-color: #ff4444; }
+
+    /* ── Two-column row ── */
+    .field-row { display: flex; gap: 12px; }
+    .field-row .field { flex: 1; }
+
+    /* ── Two-in-one hint box ── */
+    .two-in-one {
+      background: #1a1a1a;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .two-in-one .hint {
+      color: #555;
+      font-size: 11px;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .two-in-one .field { margin-bottom: 0; }
+
+    /* ── Button ── */
+    #calcBtn {
+      width: 100%;
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.15s;
+    }
+    #calcBtn:hover  { opacity: 0.85; }
+    #calcBtn:active { opacity: 0.70; }
+
+    /* ── Result card ── */
+    #resultCard { display: none; animation: fadeIn 0.35s ease; }
+    #resultCard.is-visible { display: block; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0);    }
+    }
+
+    /* ── Price comparison row ── */
+    .price-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #1f1f1f;
+    }
+    .price-item { text-align: center; }
+    .price-label { display: block; color: #555; font-size: 11px; margin-bottom: 4px; }
+    .price-value { color: #fff; font-size: 20px; font-weight: 700; }
+    .arrow { color: #333; font-size: 18px; }
+
+    /* ── Big missed amount ── */
+    .missed-section { text-align: center; margin-bottom: 16px; }
+    .missed-label   { color: #555; font-size: 12px; letter-spacing: 2px; margin-bottom: 8px; }
+    .missed-amount  { font-size: 44px; font-weight: 900; letter-spacing: -1px; }
+
+    /* ── Humor copy ── */
+    .humor-box {
+      background: #1a1a1a;
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+      color: #666;
+      font-size: 13px;
+      line-height: 2;
+      margin-bottom: 12px;
+    }
+    .humor-box span { color: #fff; font-weight: 600; }
+
+    /* ── Taunt ── */
+    .taunt { text-align: center; color: #333; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>悔了么</h1>
+      <p>如果当时买了，现在赚了多少</p>
+    </header>
+
+    <section class="card" id="inputCard">
+      <div class="field">
+        <label for="stockName">股票名称</label>
+        <input type="text" id="stockName" placeholder="例：宁德时代">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="buyPrice">当时价格（元）</label>
+          <input type="number" id="buyPrice" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="currentPrice">现在价格（元）</label>
+          <input type="number" id="currentPrice" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+        </div>
+      </div>
+
+      <div class="two-in-one">
+        <p class="hint">填股数或金额，二选一即可</p>
+        <div class="field-row">
+          <div class="field">
+            <label for="shares">打算买多少股</label>
+            <input type="number" id="shares" placeholder="股" min="0" step="1">
+          </div>
+          <div class="field">
+            <label for="amount">或投入多少钱</label>
+            <input type="number" id="amount" placeholder="元" min="0" step="0.01" inputmode="decimal">
+          </div>
+        </div>
+      </div>
+
+      <button id="calcBtn">算一算</button>
+    </section>
+
+    <section class="card" id="resultCard">
+      <div class="price-row">
+        <div class="price-item">
+          <span class="price-label">当时</span>
+          <span class="price-value" id="resBuyPrice"></span>
+        </div>
+        <span class="arrow" aria-hidden="true">→</span>
+        <div class="price-item">
+          <span class="price-label">现在</span>
+          <span class="price-value" id="resCurrentPrice"></span>
+        </div>
+        <div class="price-item">
+          <span class="price-label">涨幅</span>
+          <span class="price-value" id="resGain"></span>
+        </div>
+      </div>
+
+      <div class="missed-section">
+        <p class="missed-label">你错失了</p>
+        <p class="missed-amount" id="resMissed"></p>
+      </div>
+
+      <div class="humor-box" id="resHumor"></div>
+      <p class="taunt" id="resTaunt"></p>
+    </section>
+  </main>
+
+  <script>
+    // ── DOM refs ──
+    const buyPriceInput    = document.getElementById('buyPrice');
+    const currentPriceInput = document.getElementById('currentPrice');
+    const sharesInput      = document.getElementById('shares');
+    const amountInput      = document.getElementById('amount');
+    const calcBtn          = document.getElementById('calcBtn');
+    const resultCard       = document.getElementById('resultCard');
+
+    // tracks which of the two fields the user last typed into
+    let lastEdited = null; // 'shares' | 'amount'
+
+    // ── Number formatting ──
+    function fmt(n) {
+      return n.toLocaleString('zh-CN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    // ── Two-in-one auto-sync ──
+    function syncFromShares() {
+      lastEdited = 'shares';
+      const bp = parseFloat(buyPriceInput.value);
+      const s  = parseFloat(sharesInput.value);
+      amountInput.value = (!isNaN(bp) && bp > 0 && !isNaN(s) && s > 0)
+        ? fmt(s * bp)
+        : '';
+    }
+
+    function syncFromAmount() {
+      lastEdited = 'amount';
+      const bp = parseFloat(buyPriceInput.value);
+      const a  = parseFloat(amountInput.value.replace(/,/g, ''));
+      sharesInput.value = (!isNaN(bp) && bp > 0 && !isNaN(a) && a > 0)
+        ? Math.floor(a / bp)
+        : '';
+    }
+
+    sharesInput.addEventListener('input', syncFromShares);
+    amountInput.addEventListener('input', syncFromAmount);
+
+    // re-sync when buy price changes
+    buyPriceInput.addEventListener('input', () => {
+      if (lastEdited === 'shares') syncFromShares();
+      else if (lastEdited === 'amount') syncFromAmount();
+    });
+
+    // ── Validation ──
+    function validate() {
+      [buyPriceInput, currentPriceInput, sharesInput, amountInput]
+        .forEach(el => el.classList.remove('error'));
+
+      let ok = true;
+
+      const bp = parseFloat(buyPriceInput.value);
+      if (!buyPriceInput.value || isNaN(bp) || bp <= 0) {
+        buyPriceInput.classList.add('error'); ok = false;
+      }
+      const cp = parseFloat(currentPriceInput.value);
+      if (!currentPriceInput.value || isNaN(cp) || cp <= 0) {
+        currentPriceInput.classList.add('error'); ok = false;
+      }
+
+      const s = parseFloat(sharesInput.value);
+      const a = parseFloat(amountInput.value.replace(/,/g, ''));
+      if ((isNaN(s) || s <= 0) && (isNaN(a) || a <= 0)) {
+        sharesInput.classList.add('error');
+        amountInput.classList.add('error');
+        ok = false;
+      }
+
+      return ok;
+    }
+
+    // ── Calculation (pure) ──
+    function calculate(buyPrice, currentPrice, shares) {
+      const invested     = shares * buyPrice;
+      const currentValue = shares * currentPrice;
+      const missed       = currentValue - invested;
+      const gainPercent  = ((currentPrice - buyPrice) / buyPrice) * 100;
+      return { invested, currentValue, missed, gainPercent };
+    }
+
+    // ── Taunt phrases ──
+    const TAUNTS = [
+      '「当时只差一个勇气」',
+      '「纸上谈兵，白纸一张」',
+      '「你的钱，在别人口袋里」',
+      '「错过的不是股票，是自由」',
+      '「下次一定」',
+    ];
+
+    // ── Humor conversion constants ──
+    const HUMOR_PRICES = {
+      luckin: 30,      // 瑞幸咖啡 per cup (¥)
+      iphone: 9999,    // iPhone 16 Pro Max (¥)
+      salary: 12000,   // 北京平均月薪 (¥)
+    };
+
+    // ── Render results ──
+    function renderResult(buyPrice, currentPrice, shares, missed, gainPercent) {
+      document.getElementById('resBuyPrice').textContent    = '¥' + fmt(buyPrice);
+      document.getElementById('resCurrentPrice').textContent = '¥' + fmt(currentPrice);
+      document.getElementById('resGain').textContent =
+        (gainPercent >= 0 ? '+' : '') + gainPercent.toFixed(2) + '%';
+
+      const absMissed = Math.abs(missed);
+      const luckin    = Math.floor(absMissed / HUMOR_PRICES.luckin);
+      const iphone    = Math.floor(absMissed / HUMOR_PRICES.iphone);
+      const salary    = Math.floor(absMissed / HUMOR_PRICES.salary);
+
+      if (missed >= 0) {
+        document.getElementById('resMissed').textContent = '¥' + fmt(missed);
+        document.querySelector('.missed-label').textContent = '你错失了';
+        document.getElementById('resHumor').innerHTML =
+          `相当于 <span>${luckin.toLocaleString()}</span> 杯瑞幸咖啡<br>` +
+          `或 <span>${iphone.toLocaleString()}</span> 台 iPhone 16 Pro Max<br>` +
+          `或 <span>${salary.toLocaleString()}</span> 个月北京平均工资`;
+      } else {
+        document.getElementById('resMissed').textContent = '¥' + fmt(absMissed);
+        document.querySelector('.missed-label').textContent = '你躲过了';
+        document.getElementById('resHumor').innerHTML =
+          `少亏了 <span>${luckin.toLocaleString()}</span> 杯瑞幸咖啡<br>` +
+          `少亏了 <span>${iphone.toLocaleString()}</span> 台 iPhone 16 Pro Max<br>` +
+          `少亏了 <span>${salary.toLocaleString()}</span> 个月北京平均工资`;
+      }
+
+      document.getElementById('resTaunt').textContent =
+        TAUNTS[Math.floor(Math.random() * TAUNTS.length)];
+
+      // re-trigger animation each time
+      resultCard.classList.remove('is-visible');
+      resultCard.offsetHeight; // force reflow
+      resultCard.classList.add('is-visible');
+    }
+
+    // ── Main button handler ──
+    calcBtn.addEventListener('click', () => {
+      if (!validate()) return;
+
+      const buyPrice     = parseFloat(buyPriceInput.value);
+      const currentPrice = parseFloat(currentPriceInput.value);
+
+      let shares;
+      const rawShares = parseFloat(sharesInput.value);
+      const rawAmount = parseFloat(amountInput.value.replace(/,/g, ''));
+
+      if (lastEdited === 'amount' && !isNaN(rawAmount)) {
+        shares = Math.floor(rawAmount / buyPrice);
+      } else {
+        shares = rawShares;
+      }
+
+      const { missed, gainPercent } = calculate(buyPrice, currentPrice, shares);
+      renderResult(buyPrice, currentPrice, shares, missed, gainPercent);
+    });
+  </script>
+</body>
+</html>
