@@ -173,7 +173,7 @@
         <div class="field-row">
           <div class="field">
             <label for="shares">打算买多少股</label>
-            <input type="number" id="shares" placeholder="股" min="0" step="1">
+            <input type="number" id="shares" placeholder="股" min="0" step="1" inputmode="numeric">
           </div>
           <div class="field">
             <label for="amount">或投入多少钱</label>
@@ -238,7 +238,7 @@
       const bp = parseFloat(buyPriceInput.value);
       const s  = parseFloat(sharesInput.value);
       amountInput.value = (!isNaN(bp) && bp > 0 && !isNaN(s) && s > 0)
-        ? fmt(s * bp)
+        ? (s * bp).toFixed(2)
         : '';
     }
 
