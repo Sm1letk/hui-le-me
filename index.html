@@ -7,15 +7,26 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html { background: #000; }
+
     body {
-      background: #0a0a0a;
+      background: transparent;
       color: #fff;
       font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
       min-height: 100vh;
       padding: 32px 16px 64px;
     }
 
-    main { max-width: 480px; margin: 0 auto; }
+    main { max-width: 480px; margin: 0 auto; position: relative; z-index: 1; }
+
+    /* ── Background canvas ── */
+    #bgCanvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
 
     /* ── Header ── */
     header { text-align: center; margin-bottom: 32px; }
@@ -24,8 +35,8 @@
 
     /* ── Cards ── */
     .card {
-      background: #141414;
-      border: 1px solid #222;
+      background: rgba(14,14,14,0.72);
+      border: 1px solid rgba(255,255,255,0.07);
       border-radius: 16px;
       padding: 20px;
       margin-bottom: 16px;
@@ -43,8 +54,8 @@
     }
     .field input {
       width: 100%;
-      background: #1e1e1e;
-      border: 1px solid #2a2a2a;
+      background: rgba(20,20,20,0.80);
+      border: 1px solid rgba(255,255,255,0.08);
       border-radius: 8px;
       padding: 12px 14px;
       color: #fff;
@@ -69,7 +80,7 @@
 
     /* ── Two-in-one hint box ── */
     .two-in-one {
-      background: #1a1a1a;
+      background: rgba(18,18,18,0.65);
       border-radius: 10px;
       padding: 14px;
       margin-bottom: 16px;
@@ -129,7 +140,7 @@
 
     /* ── Humor copy ── */
     .humor-box {
-      background: #1a1a1a;
+      background: rgba(18,18,18,0.65);
       border-radius: 10px;
       padding: 14px;
       text-align: center;
@@ -142,14 +153,51 @@
 
     /* ── Taunt ── */
     .taunt { text-align: center; color: #777; font-size: 14px; }
+
+    /* ── Market picker ── */
+    .market-picker {
+      display: flex;
+      background: rgba(14,14,14,0.72);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 4px;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+    .market-picker button {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #666;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 4px;
+      border-radius: 9px;
+      cursor: pointer;
+      font-family: inherit;
+      letter-spacing: 0.5px;
+      transition: background 0.2s, color 0.2s;
+    }
+    .market-picker button.active {
+      background: #fff;
+      color: #000;
+    }
+    .market-picker button:not(.active):hover { color: #aaa; }
   </style>
 </head>
 <body>
+  <canvas id="bgCanvas"></canvas>
   <main>
     <header>
       <h1>悔了么</h1>
-      <p>如果当时买了，现在赚了多少</p>
+      <p>如果当时买了该有多好....</p>
     </header>
+
+    <div class="market-picker">
+      <button class="active" data-market="a">A股 ¥</button>
+      <button data-market="us">美股 $</button>
+      <button data-market="hk">港股 HK$</button>
+    </div>
 
     <section class="card" id="inputCard">
       <div class="field">
@@ -214,15 +262,37 @@
 
   <script>
     // ── DOM refs ──
-    const buyPriceInput    = document.getElementById('buyPrice');
+    const buyPriceInput     = document.getElementById('buyPrice');
     const currentPriceInput = document.getElementById('currentPrice');
-    const sharesInput      = document.getElementById('shares');
-    const amountInput      = document.getElementById('amount');
-    const calcBtn          = document.getElementById('calcBtn');
-    const resultCard       = document.getElementById('resultCard');
+    const sharesInput       = document.getElementById('shares');
+    const amountInput       = document.getElementById('amount');
+    const calcBtn           = document.getElementById('calcBtn');
+    const resultCard        = document.getElementById('resultCard');
 
-    // tracks which of the two fields the user last typed into
     let lastEdited = null; // 'shares' | 'amount'
+
+    // ── Markets ──
+    const MARKETS = {
+      a:  { symbol: '¥',   unit: '元',  toCNY: 1    },
+      us: { symbol: '$',   unit: 'USD', toCNY: 7.2  },
+      hk: { symbol: 'HK$', unit: 'HKD', toCNY: 0.92 },
+    };
+    let currentMarket = 'a';
+
+    function applyMarket(key) {
+      currentMarket = key;
+      const m = MARKETS[key];
+      document.querySelectorAll('.market-picker button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.market === key);
+      });
+      document.querySelector('label[for="buyPrice"]').textContent    = `当时价格（${m.unit}）`;
+      document.querySelector('label[for="currentPrice"]').textContent = `现在价格（${m.unit}）`;
+      amountInput.placeholder = m.unit;
+    }
+
+    document.querySelectorAll('.market-picker button').forEach(btn => {
+      btn.addEventListener('click', () => applyMarket(btn.dataset.market));
+    });
 
     // ── Number formatting ──
     function fmt(n) {
@@ -254,7 +324,6 @@
     sharesInput.addEventListener('input', syncFromShares);
     amountInput.addEventListener('input', syncFromAmount);
 
-    // re-sync when buy price changes
     buyPriceInput.addEventListener('input', () => {
       if (lastEdited === 'shares') syncFromShares();
       else if (lastEdited === 'amount') syncFromAmount();
@@ -305,45 +374,107 @@
       '「下次一定」',
     ];
 
-    // ── Humor conversion constants ──
-    const HUMOR_PRICES = {
-      luckin: 30,      // 瑞幸咖啡 per cup (¥)
-      iphone: 9999,    // iPhone 16 Pro Max (¥)
-      salary: 12000,   // 北京平均月薪 (¥)
-    };
+    // ── Humor items（价格统一用人民币，50 个）──
+    const HUMOR_ITEMS = [
+      { price: 8,        label: '杯蜜雪冰城奶茶' },
+      { price: 15,       label: '碗兰州拉面' },
+      { price: 25,       label: '份麦当劳套餐' },
+      { price: 30,       label: '杯瑞幸咖啡' },
+      { price: 35,       label: '杯喜茶' },
+      { price: 38,       label: '杯星巴克拿铁' },
+      { price: 68,       label: '盒哈根达斯冰淇淋' },
+      { price: 88,       label: '件优衣库摇粒绒' },
+      { price: 128,      label: '张 IMAX 电影票' },
+      { price: 150,      label: '顿海底捞（人均）' },
+      { price: 199,      label: '件优衣库羽绒服' },
+      { price: 280,      label: '双 Converse 帆布鞋' },
+      { price: 399,      label: '张 Switch 游戏卡带' },
+      { price: 499,      label: '双 Nike Air Force 1' },
+      { price: 599,      label: '双 Adidas Stan Smith' },
+      { price: 699,      label: '套汉服' },
+      { price: 799,      label: '张演唱会门票' },
+      { price: 999,      label: '双 New Balance 530' },
+      { price: 1299,     label: '副 AirPods 4' },
+      { price: 1799,     label: '块 Apple Watch SE' },
+      { price: 1899,     label: '副 AirPods Pro 2' },
+      { price: 2299,     label: '台大疆 Pocket 3' },
+      { price: 2499,     label: '瓶茅台飞天（500ml）' },
+      { price: 2999,     label: '块 Apple Watch S10' },
+      { price: 3298,     label: '台 Nintendo Switch 2' },
+      { price: 3799,     label: '台 iPad mini 7' },
+      { price: 4299,     label: '台 Sony PS5' },
+      { price: 4999,     label: '台大疆 Mini 4 Pro' },
+      { price: 5500,     label: '次日本双人旅游' },
+      { price: 7999,     label: '台 MacBook Air M3' },
+      { price: 9999,     label: '台 iPhone 16 Pro Max' },
+      { price: 12000,    label: '个月北京平均工资' },
+      { price: 14000,    label: '个 LV Neverfull MM' },
+      { price: 16999,    label: '台 MacBook Pro M4' },
+      { price: 25000,    label: '枚卡地亚 LOVE 戒指' },
+      { price: 40000,    label: '辆雅马哈 R1 摩托' },
+      { price: 50000,    label: '块劳力士 Oyster Perpetual' },
+      { price: 60000,    label: '个 Chanel 中号 CF' },
+      { price: 75000,    label: '块劳力士 Submariner' },
+      { price: 89800,    label: '辆 BYD 海鸥' },
+      { price: 130000,   label: '辆比亚迪汉 EV' },
+      { price: 179800,   label: '辆 BYD 海豹' },
+      { price: 263500,   label: '辆 Model Y' },
+      { price: 329900,   label: '辆宝马 3 系' },
+      { price: 499000,   label: '辆保时捷 Macan' },
+      { price: 500000,   label: '个上海郊区小户型首付' },
+      { price: 1048000,  label: '辆保时捷 911 Carrera' },
+      { price: 2000000,  label: '辆宾利添越' },
+      { price: 3500000,  label: '辆法拉利 296 GTB' },
+      { price: 5000000,  label: '辆劳斯莱斯幻影' },
+    ];
+
+    function shufflePick(arr, n) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a.slice(0, n);
+    }
+
+    function buildHumor(cnyAmount, isProfit) {
+      const prefix = isProfit ? '相当于' : '少亏了';
+      const eligible = HUMOR_ITEMS.filter(({ price }) => Math.floor(cnyAmount / price) >= 1);
+      const picked = eligible.length <= 5
+        ? eligible
+        : shufflePick(eligible, 5);
+      picked.sort((a, b) => a.price - b.price);
+      return picked
+        .map(({ price, label }) => {
+          const count = Math.floor(cnyAmount / price);
+          return `${prefix} <span>${count.toLocaleString()}</span> ${label}`;
+        })
+        .join('<br>');
+    }
 
     // ── Render results ──
     function renderResult(buyPrice, currentPrice, shares, missed, gainPercent) {
-      document.getElementById('resBuyPrice').textContent    = '¥' + fmt(buyPrice);
-      document.getElementById('resCurrentPrice').textContent = '¥' + fmt(currentPrice);
+      const m = MARKETS[currentMarket];
+      document.getElementById('resBuyPrice').textContent     = m.symbol + fmt(buyPrice);
+      document.getElementById('resCurrentPrice').textContent = m.symbol + fmt(currentPrice);
       document.getElementById('resGain').textContent =
         (gainPercent >= 0 ? '+' : '') + gainPercent.toFixed(2) + '%';
 
       const absMissed = Math.abs(missed);
-      const luckin    = Math.floor(absMissed / HUMOR_PRICES.luckin);
-      const iphone    = Math.floor(absMissed / HUMOR_PRICES.iphone);
-      const salary    = Math.floor(absMissed / HUMOR_PRICES.salary);
+      const cnyMissed = absMissed * m.toCNY;
 
       if (missed >= 0) {
-        document.getElementById('resMissed').textContent = '¥' + fmt(missed);
+        document.getElementById('resMissed').textContent = m.symbol + fmt(missed);
         document.querySelector('.missed-label').textContent = '你错失了';
-        document.getElementById('resHumor').innerHTML =
-          `相当于 <span>${luckin.toLocaleString()}</span> 杯瑞幸咖啡<br>` +
-          `或 <span>${iphone.toLocaleString()}</span> 台 iPhone 16 Pro Max<br>` +
-          `或 <span>${salary.toLocaleString()}</span> 个月北京平均工资`;
       } else {
-        document.getElementById('resMissed').textContent = '¥' + fmt(absMissed);
+        document.getElementById('resMissed').textContent = m.symbol + fmt(absMissed);
         document.querySelector('.missed-label').textContent = '你躲过了';
-        document.getElementById('resHumor').innerHTML =
-          `少亏了 <span>${luckin.toLocaleString()}</span> 杯瑞幸咖啡<br>` +
-          `少亏了 <span>${iphone.toLocaleString()}</span> 台 iPhone 16 Pro Max<br>` +
-          `少亏了 <span>${salary.toLocaleString()}</span> 个月北京平均工资`;
       }
 
+      document.getElementById('resHumor').innerHTML = buildHumor(cnyMissed, missed >= 0);
       document.getElementById('resTaunt').textContent =
         TAUNTS[Math.floor(Math.random() * TAUNTS.length)];
 
-      // re-trigger animation each time
       resultCard.classList.remove('is-visible');
       resultCard.offsetHeight; // force reflow
       resultCard.classList.add('is-visible');
@@ -369,6 +500,130 @@
       const { missed, gainPercent } = calculate(buyPrice, currentPrice, shares);
       renderResult(buyPrice, currentPrice, shares, missed, gainPercent);
     });
+  </script>
+  <script>
+    (function () {
+      const canvas = document.getElementById('bgCanvas');
+      const ctx = canvas.getContext('2d');
+      const off = document.createElement('canvas');
+      const offCtx = off.getContext('2d');
+      let rotation = 0, time = 0;
+      let rain = [];
+
+      function gauss() {
+        let u = 0, v = 0;
+        while (!u) u = Math.random();
+        while (!v) v = Math.random();
+        return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      }
+
+      function buildSpiral() {
+        const W = off.width, H = off.height;
+        const cx = W / 2, cy = H / 2;
+        // 延伸到屏幕四角
+        const maxR = Math.sqrt(cx * cx + cy * cy) * 1.08;
+        const turns = 5.5;
+        const maxTheta = turns * Math.PI * 2;
+        const b = maxR / maxTheta;
+
+        offCtx.clearRect(0, 0, W, H);
+
+        // 按弧长均匀采样：theta ∝ sqrt(u)
+        for (let i = 0; i < 26000; i++) {
+          const theta = Math.sqrt(Math.random()) * maxTheta;
+          const rSpiral = b * theta;
+          const armW = 4 + Math.sqrt(rSpiral) * 0.65;
+          const ro = gauss() * armW * 0.48;
+          const r = Math.max(0, rSpiral + ro);
+          const a = theta + gauss() * 0.055;
+
+          const x = cx + r * Math.cos(a);
+          const y = cy + r * Math.sin(a);
+          if (x < 0 || x > W || y < 0 || y > H) continue;
+
+          const size = Math.random() < 0.93
+            ? Math.random() * 0.85 + 0.15
+            : Math.random() * 1.8 + 0.4;
+          const edgeFade = Math.exp(-(ro * ro) / (armW * armW));
+          const alpha = ((0.06 + Math.random() * 0.42) * edgeFade).toFixed(3);
+
+          offCtx.beginPath();
+          offCtx.arc(x, y, size, 0, Math.PI * 2);
+          offCtx.fillStyle = `rgba(210,210,210,${alpha})`;
+          offCtx.fill();
+        }
+      }
+
+      function initRain() {
+        const W = canvas.width, H = canvas.height;
+        rain = [];
+        for (let i = 0; i < 320; i++) {
+          rain.push({
+            x:     Math.random() * W,
+            y:     Math.random() * H,
+            speed: Math.random() * 0.55 + 0.12,
+            drift: (Math.random() - 0.5) * 0.08,
+            alpha: Math.random() * 0.10 + 0.015,
+            size:  Math.random() * 0.9 + 0.1,
+          });
+        }
+      }
+
+      function resize() {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+        off.width  = canvas.width;
+        off.height = canvas.height;
+        buildSpiral();
+        initRain();
+      }
+
+      function animate() {
+        const W = canvas.width, H = canvas.height;
+
+        // 纯黑底
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+
+        // 螺旋（慢旋 + 呼吸）
+        ctx.save();
+        ctx.translate(W / 2, H / 2);
+        ctx.rotate(rotation);
+        const pulse = 1 + Math.sin(time * 0.35) * 0.012;
+        ctx.scale(pulse, pulse);
+        ctx.translate(-W / 2, -H / 2);
+        ctx.drawImage(off, 0, 0);
+        ctx.restore();
+
+        // 雨粒子
+        for (const p of rain) {
+          p.y += p.speed;
+          p.x += p.drift;
+          if (p.y > H) { p.y = -2; p.x = Math.random() * W; }
+          if (p.x < 0 || p.x > W) { p.x = Math.random() * W; }
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(200,200,200,${p.alpha})`;
+          ctx.fill();
+        }
+
+        // 四角暗角
+        const vg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W, H) * 0.62);
+        vg.addColorStop(0,    'rgba(0,0,0,0)');
+        vg.addColorStop(0.55, 'rgba(0,0,0,0.08)');
+        vg.addColorStop(1,    'rgba(0,0,0,0.82)');
+        ctx.fillStyle = vg;
+        ctx.fillRect(0, 0, W, H);
+
+        rotation += 0.0015;
+        time += 0.016;
+        requestAnimationFrame(animate);
+      }
+
+      window.addEventListener('resize', resize);
+      resize();
+      animate();
+    })();
   </script>
 </body>
 </html>
